@@ -3,6 +3,7 @@
 #include <string>
 #include <stdexcept>
 #include <cctype>
+#include <iomanip>
 
 ScalarConverter::ScalarConverter() {}
 
@@ -12,122 +13,181 @@ ScalarConverter& ScalarConverter::operator=(const ScalarConverter& other) {
 	(void)other;
 	return *this;
 }
-
-
 // helper functions
 
 // detect type
 static bool isCharType(const std::string& input) {
-	/*if (input.length() == 1) {
-		return true;
-	}*/
-	if (input.length() == 3 && input[0] == '\'' && input[2] == '\'') {
+	if (input.length() == 3 && input[0] == '\'' && input[2] == '\'') { // 'a' 'b' 'A' '4'
+		if (isdigit(input[1])) // '5' '6' '='
+			return false;
+		if (!isalpha(input[1]))
+			return false;
 		return true;
 	}
-	// Handle escape sequences like "\n", "\t", "\0", etc.
-	if (input.length() == 2 && input[0] == '\\') {
-		char second = input[1];
-		return (second == 'n' || second == 't' || second == 'r' || 
-				second == 'b' || second == 'f' || second == 'v' || 
-				second == 'a' || second == '0' || second == '\\');
-	}
+	//std::cout << "NOT char" << std::endl;
 	return false;
 }
 
 static bool isIntType(const std::string& input) {
-	if (input.empty())
-		return false;
-	
+	//std::cout << "is int?" << std::endl;
 	size_t start = 0;
-	if (input[0] == '-' || input[0] == '+') {
-		if (input.length() == 1)
-			return false;
+	if (input[0] == '-' || input[0] == '+')
 		start = 1;
-	}
-
 	for (size_t i = start; i < input.length(); i++) {
-		if (!isdigit(input[i]))
+		//std::cout << "inside for loop" << std::endl;
+		if (!isdigit(input[i])) {
+			//std::cout << "NOT int" << std::endl;
 			return false;
+		}
+		//std::cout << "end of loop" << std::endl;
 	}
-
+	//std::cout << "outside for loop" << std::endl;
 	return true;
 }
- // extract
-static int extractInt(const std::string& input) {
-	try {
-		return std::stoi(input);
-	} catch (const std::out_of_range& e) {
-		throw std::invalid_argument("Integer out of range");
-	}
-}
 
-static char extractChar(const std::string& input) {
-	/*if (input.length() == 1) {
-		return input[0];
-	}*/
-	if (input.length() == 3 && input[0] == '\'' && input[2] == '\'') {
-		return input[1];
-	}
-	// Handle escape sequences
-	if (input.length() == 2 && input[0] == '\\') {
-		switch (input[1]) {
-			case 'n': return '\n';
-			case 't': return '\t';
-			case 'r': return '\r';
-			case 'b': return '\b';
-			case 'f': return '\f';
-			case 'v': return '\v';
-			case 'a': return '\a';
-			case '0': return '\0';
-			case '\\': return '\\';
+static bool isFloatType(const std::string& input) {
+	//std::cout << "is float?" << std::endl;
+	if (input == "-inff" || input == "+inff" || input == "nanf")
+		return true;
+	size_t start = 0;
+	int count = 0;
+	if (input[0] == '-' || input[0] == '+') 
+		start = 1;
+	if (!isdigit(input[start])) // ".05f"
+		return false;
+	//std::cout << "first sign is digit" << std::endl;
+	for (size_t i = start; i < input.length(); i++) {
+		if (!isdigit(input[i])) { // "0.5f"
+			if (input[i] == '.') // "0..5f" "0.50.f"
+				count++;
 		}
 	}
-	throw std::invalid_argument("Not a valid character");
+	if (count != 1)
+		return false;
+	if (input.back() != 'f')
+			return false;
+	return true;
+}
+
+static bool isDoubleType(const std::string& input) {
+	//std::cout << "is float?" << std::endl;
+	if (input == "-inf" || input == "+inf" || input == "nan")
+		return true;
+	size_t start = 0;
+	int count = 0;
+	if (input[0] == '-' || input[0] == '+') 
+		start = 1;
+	if (!isdigit(input[start])) // ".05f"
+		return false;
+	//std::cout << "first sign is digit" << std::endl;
+	for (size_t i = start; i < input.length(); i++) {
+		if (!isdigit(input[i])) { // "0.5f"
+			if (input[i] == '.') // "0..5f" "0.50.f"
+				count++;
+		}
+	}
+	if (count != 1)
+		return false;
+	return true;	
+}
+
+ // extract
+
+static char extractChar(const std::string& input) {
+	return static_cast<char>(input[1]);
+}
+
+static int extractInt(const std::string& input) {
+	return std::stoi(input);
+}
+
+static float extractFloat(const std::string& input) {
+	return std::stof(input);
+}
+
+static double extractDouble(const std::string& input) {
+	return std::stod(input);
 }
 
 void ScalarConverter::convert(std::string input) {
-	// Detect and convert based on type
+	// detect type passed as argv[1]
+	// convert it from string to its actual type
 	if (isCharType(input)) {
-		try {
-			char c = extractChar(input);
-		// Convert char to all types
-			if (std::isprint(c)) {
-		   		std::cout << "char: '" << c << "'" << std::endl;
-			} else {
-				throw std::invalid_argument ("char: Non displayable");
-			}
-			std::cout << "int: " << static_cast<int>(c) << std::endl;
-			std::cout << "float: " << static_cast<float>(c) << ".0f" << std::endl;
-			std::cout << "double: " << static_cast<double>(c) << ".0" << std::endl;	
-		} catch (const std::invalid_argument& e) {
-			std::cerr << "Error: " << e.what() << std::endl;
-		}
+		// std::cout << "input is a char" << std::endl;
+		char c = extractChar(input);
+		std::cout << "char : " << c << std::endl;
+		std::cout << "int : " << static_cast<int>(c) << std::endl;
+		std::cout << "float : " << static_cast<float>(c) << std::endl;
+		std::cout << "double : " << static_cast<double>(c) << std::endl;
 	}
 	else if (isIntType(input)) {
+		//std::cout << "input is int" << std::endl;
+		int n = extractInt(input);
 		try {
-			int n = extractInt(input);
-			
-			// Convert int to all types
-			// Check if int can be displayed as char
-			if (n >= 0 && n <= 127 && std::isprint(static_cast<char>(n))) {
-				std::cout << "char: '" << static_cast<char>(n) << "'" << std::endl;
-			} else {
-				std::cout << "char: Non displayable" << std::endl;
-			}
-			
-			std::cout << "int: " << n << std::endl;
-			std::cout << "float: " << static_cast<float>(n) << ".0f" << std::endl;
-			std::cout << "double: " << static_cast<double>(n) << ".0" << std::endl;
-			
-		} catch (const std::out_of_range& e) {
-			std::cout << "char: impossible" << std::endl;
-			std::cout << "int: impossible" << std::endl;
-			std::cout << "float: impossible" << std::endl;
-			std::cout << "double: impossible" << std::endl;
+			if (n < 0 || n > 255)
+				throw std::out_of_range("impossible");
+			if (!isprint(static_cast<char>(n)))
+				throw std::out_of_range("not printable");
+			else
+				std::cout << "char : " << static_cast<char>(n) << std::endl;
+		} catch (std::out_of_range e) {
+			std::cout << "char : " << e.what() << std::endl;
 		}
+		std::cout << "int : " << n << std::endl;
+		std::cout << "float : " << std::fixed << std::setprecision(1) << static_cast<float>(n) << "f" << std::endl;
+		std::cout << "double : " << std::fixed << std::setprecision(1) << static_cast<double>(n) << std::endl;
 	}
-	else {
-		std::cout << "Type not recognized or not implemented yet" << std::endl;
+	else if (isFloatType(input)) {
+		//std::cout << "input is float" << std::endl;
+		float f = extractFloat(input);
+		try {
+			if (f < 0 || f > 255)
+				throw std::out_of_range("impossible");
+			if (input == "-inff" || input == "+inff" || input == "nanf")
+				throw std::out_of_range("impossible");
+			else if (!isprint(static_cast<char>(f)))
+				throw std::out_of_range("not printable");
+			else
+				std::cout << "char : " << static_cast<char>(f) << std::endl;
+		} catch (std::out_of_range e) {
+			std::cout << "char : " << e.what() << std::endl;
+		}
+		try {
+			if (input == "-inff" || input == "+inff" || input == "nanf")
+				throw std::out_of_range("impossible");
+			else
+				std::cout << "int : " << static_cast<int>(f) << std::endl;
+		} catch (std::out_of_range e) {
+			std::cout << "int : " << e.what() << std::endl;
+		}
+		std::cout << "float : " << std::fixed << std::setprecision(1) << f << "f" << std::endl;
+		std::cout << "double : " << std::fixed << std::setprecision(1) << static_cast<double>(f) << std::endl;
+	}
+	else if (isDoubleType(input)) {
+		//std::cout << "input is double" << std::endl;
+		double d = extractDouble(input);
+		try {
+			if (d < 0 || d > 255)
+				throw std::out_of_range("impossible");
+			if (input == "-inf" || input == "+inf" || input == "nan")
+				throw std::out_of_range("impossible");
+			else if (!isprint(static_cast<char>(d)))
+				throw std::out_of_range("not printable");
+			else
+				std::cout << "char : " << static_cast<char>(d) << std::endl;
+		} catch (std::out_of_range e) {
+			std::cout << "char : " << e.what() << std::endl;
+		}
+		try {
+			if (input == "-inf" || input == "+inf" || input == "nan")
+				throw std::out_of_range("impossible");
+			else
+				std::cout << "int : " << static_cast<int>(d) << std::endl;
+		} catch (std::out_of_range e) {
+			std::cout << "int : " << e.what() << std::endl;
+		}
+		std::cout << "float : " << std::fixed << std::setprecision(1) << static_cast<float>(d) << "f" << std::endl;
+		std::cout << "double : " << std::fixed << std::setprecision(1) << d << std::endl;
 	}
 }
 
