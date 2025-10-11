@@ -53,19 +53,23 @@ static bool isFloatType(const std::string& input) {
 	int count = 0;
 	if (input[0] == '-' || input[0] == '+') 
 		start = 1;
+	if (input.back() != 'f') 
+		return false;
+	if (input.find('f') != input.size() - 1)
+        return false;
 	if (!isdigit(input[start])) // ".05f"
 		return false;
 	//std::cout << "first sign is digit" << std::endl;
-	for (size_t i = start; i < input.length(); i++) {
+	for (size_t i = start; i < input.length() - 1; i++) {
 		if (!isdigit(input[i])) { // "0.5f"
 			if (input[i] == '.') // "0..5f" "0.50.f"
 				count++;
+			else
+				return false;
 		}
 	}
 	if (count != 1)
 		return false;
-	if (input.back() != 'f')
-			return false;
 	return true;
 }
 
@@ -73,6 +77,11 @@ static bool isDoubleType(const std::string& input) {
 	//std::cout << "is float?" << std::endl;
 	if (input == "-inf" || input == "+inf" || input == "nan")
 		return true;
+
+	// Reject if it contains 'f' (it's a float, not a double)
+    if (input.find('f') != std::string::npos)
+        return false;
+	
 	size_t start = 0;
 	int count = 0;
 	if (input[0] == '-' || input[0] == '+') 
@@ -84,6 +93,8 @@ static bool isDoubleType(const std::string& input) {
 		if (!isdigit(input[i])) { // "0.5f"
 			if (input[i] == '.') // "0..5f" "0.50.f"
 				count++;
+			else
+				return false; // reject invalid characters
 		}
 	}
 	if (count != 1)
